@@ -19,7 +19,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const config = await configYml.read().const(effects)
   if (!config) throw new Error('config.yml not found')
 
-  const postgresSub = await sdk.SubContainer.of(
+  const postgresSub = sdk.SubContainer.of(
     effects,
     { imageId: 'postgres' },
     sdk.Mounts.of().mountVolume({
@@ -33,14 +33,14 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   // The companion keeps only a disposable player cache on disk
   // (/var/tmp/youtubei.js), so it gets no persistent volume.
-  const companionSub = await sdk.SubContainer.of(
+  const companionSub = sdk.SubContainer.of(
     effects,
     { imageId: 'companion' },
     null,
     'companion',
   )
 
-  const invidiousSub = await sdk.SubContainer.of(
+  const invidiousSub = sdk.SubContainer.of(
     effects,
     { imageId: 'invidious' },
     sdk.Mounts.of().mountVolume({
