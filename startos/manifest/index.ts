@@ -20,11 +20,13 @@ export const manifest = setupManifest({
       },
       arch: ['x86_64', 'aarch64'],
     },
-    // Companion publishes no version tags — only `latest` and rolling
-    // `master-<sha>` tags. Pin the current master sha for reproducibility.
+    // Companion has no release tags; upstream publishes immutable
+    // `YYYY.MM.DD-<sha>` build tags (plus `latest`). Pin a dated build for
+    // reproducibility. (The older `master-<sha>` scheme was retired ~Jun 2026.)
     companion: {
       source: {
-        dockerTag: 'quay.io/invidious/invidious-companion:master-5652eda',
+        dockerTag:
+          'quay.io/invidious/invidious-companion:2026.08.03-438c668',
       },
       arch: ['x86_64', 'aarch64'],
     },
