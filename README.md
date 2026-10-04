@@ -4,15 +4,12 @@
 
 # Invidious on StartOS
 
-> **Upstream docs:** <https://docs.invidious.io/>
->
 > Everything not listed in this document should behave the same as upstream
 > Invidious. If a feature, setting, or behavior is not mentioned here, the
-> upstream documentation is accurate and fully applicable.
+> upstream documentation is accurate and fully applicable — see the
+> Documentation section of `instructions.md` for links.
 
-This repository packages [Invidious](https://github.com/iv-org/invidious) for StartOS. Invidious is an open source alternative frontend to YouTube: browse, search, and watch videos and manage subscriptions without ads, tracking, or a Google account.
-
-This package runs Invidious with its required [Invidious companion](https://github.com/iv-org/invidious-companion) sidecar (video playback) and a PostgreSQL database, fully wired together — no manual configuration needed.
+[Invidious](https://github.com/iv-org/invidious) is an open source alternative frontend to YouTube. This package runs it with its required [Invidious companion](https://github.com/iv-org/invidious-companion) (which resolves video streams) and a PostgreSQL database, wired together so the service is usable the moment it starts — there is nothing to configure by hand.
 
 ---
 
@@ -20,115 +17,115 @@ This package runs Invidious with its required [Invidious companion](https://gith
 
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Installation and First-Run Flow](#installation-and-first-run-flow)
-- [Configuration Management](#configuration-management)
-- [Network Access and Interfaces](#network-access-and-interfaces)
-- [Actions (StartOS UI)](#actions-startos-ui)
-- [Backups and Restore](#backups-and-restore)
-- [Health Checks](#health-checks)
+- [File Models](#file-models)
 - [Dependencies](#dependencies)
+- [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
+- [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
-- [What Is Unchanged from Upstream](#what-is-unchanged-from-upstream)
-- [Contributing](#contributing)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-This package runs **3 containers**:
+Three subcontainers run as one service, each on the upstream image with its default entrypoint. Attach to a running install with `start-cli package attach invidious -n <name>`.
 
-| Container | Image | Purpose |
+| Subcontainer | Image | Purpose |
 |-----------|-------|---------|
-| invidious | `quay.io/invidious/invidious` (via local `Dockerfile`) | Web frontend and API |
-| companion | `quay.io/invidious/invidious-companion` | Handles YouTube video stream resolution; required for playback |
-| postgres | `postgres` (alpine) | Subscriptions, users, playlists, video metadata cache |
+| `invidious` | `quay.io/invidious/invidious`, built via the local `Dockerfile` | Web frontend and REST API |
+| `companion` | `quay.io/invidious/invidious-companion` | Resolves YouTube video streams; required for playback |
+| `postgres` | `postgres` (Alpine) | Subscriptions, accounts, playlists, and the video-metadata cache |
 
-- **Architectures:** x86_64, aarch64
-- **Entrypoints:** Default upstream entrypoints for all three containers.
-- Upstream publishes arch-split Invidious tags (`<version>` for amd64, `<version>-arm64` for arm64). The local `Dockerfile` selects the correct pinned tag per architecture via `TARGETARCH`.
-- The companion image has no version tags upstream; the package pins a specific `master-<sha>` tag.
+- **Architectures:** x86_64, aarch64.
+- Upstream publishes arch-split Invidious tags (one for amd64, an `-arm64` variant for arm64) rather than a multi-arch tag; the local `Dockerfile` selects the right one per architecture via `TARGETARCH`.
+- The companion has no release tags upstream, so it is pinned to a specific dated build in `startos/manifest/index.ts`.
 
 ## Volume and Data Layout
 
+Two volumes hold all persistent state; the companion is stateless.
+
 | Volume | Mount Point | Contents |
 |--------|-------------|----------|
-| `main` | `/data` (invidious container) | `config.yml` — the Invidious configuration file, managed by StartOS |
-| `db` | `/var/lib/postgresql` (postgres container) | PostgreSQL data directory (`PGDATA=/var/lib/postgresql/data`) |
+| `main` | `/data` (invidious) | `config.yml` — the Invidious configuration file |
+| `db` | `/var/lib/postgresql` (postgres) | PostgreSQL data directory (`PGDATA` is its `data/` subdirectory) |
 
-The companion's player cache (`/var/tmp/youtubei.js`) is ephemeral and lives in the container filesystem; it is rebuilt automatically as needed.
+The companion keeps only a disposable player cache under `/var/tmp` in its own container filesystem; it has no volume and the cache is rebuilt as needed. There is no `store.json`.
 
-Invidious reads its config from the `main` volume via the `INVIDIOUS_CONFIG_FILE` environment variable.
+## File Models
 
-## Installation and First-Run Flow
+The package owns one configuration file, `config.yml` on the `main` volume, written as a YAML file model. It is seeded once at install (the model's defaults generate the secrets) and rewritten only on install and whenever the Configure Invidious action runs. Invidious reads the same file directly, so what the model writes is what the service loads at its next start.
 
-- On first install, `config.yml` is seeded with everything Invidious needs: a random PostgreSQL password, a random `hmac_key`, a random 16-character `invidious_companion_key` (shared with the companion as `SERVER_SECRET_KEY`), and the companion's private URL.
-- `check_tables: true` makes Invidious create and repair its own database schema on startup — the upstream `init-invidious-db.sh` step is not used.
-- No setup wizard and no required tasks: the service is usable immediately after install and start.
-- Accounts are optional; registration is open by default (see Actions to lock it down).
+Three classes of keys, which is what decides whether a hand edit sticks:
 
-## Configuration Management
+- **Generated once, then yours.** The PostgreSQL password, the `hmac_key` (cookie/CSRF secret), and the 16-character `invidious_companion_key` are random at first install and preserved from then on — across restarts, updates, and the config action. They are never regenerated.
+- **Re-asserted to fixed values.** The database connection (user, host, port, database name), `check_tables`, the UI `port`, `host_binding`, `https_only`, and the companion's `private_url` are held at the values the package requires. A hand edit to any of these is read by Invidious until the next rewrite, then reverted — change them in code, not on disk.
+- **Owned by an action.** `registration_enabled`, `login_enabled`, `popular_enabled`, and `statistics_enabled` are seeded with defaults and thereafter set through the Configure Invidious action.
 
-| StartOS-Managed (`config.yml`, do not edit by hand) | Upstream-Managed |
-|------------------------------------------------------|------------------|
-| Database connection (localhost, credentials) | Per-user preferences (theme, quality, captions, etc. via the web UI) |
-| `hmac_key`, `invidious_companion_key`, companion URL | User accounts, subscriptions, playlists |
-| `port` (3000), `host_binding`, `https_only: false`, `check_tables: true`, no `domain` | |
-| `registration_enabled`, `login_enabled`, `popular_enabled`, `statistics_enabled` (via the Configure Invidious action) | |
-
-The `domain` option is deliberately left unset because a StartOS service is reachable at several hostnames (`.local`, `.onion`, tunneled clearnet). Invidious derives URLs from the request Host header instead.
-
-## Network Access and Interfaces
-
-| Interface | Port | Protocol | Purpose |
-|-----------|------|----------|---------|
-| Web UI | 3000 | HTTP | Invidious web frontend and REST API (`/api/v1/…`) |
-
-Accessible via all StartOS address types: `.local`, LAN IP, `.onion`, and StartTunnel/clearnet if configured. The companion (port 8282) is internal-only — Invidious proxies all companion traffic itself.
-
-## Actions (StartOS UI)
-
-| Action | Purpose | Availability |
-|--------|---------|--------------|
-| **Configure Invidious** (`set-config`) | Toggle registration, login, the Popular page, and the public statistics endpoint | Any status |
-
-Changing settings restarts the service to apply them.
-
-## Backups and Restore
-
-- **Database:** backed up with `pg_dump` (SDK-managed), restored automatically on restore.
-- **`main` volume:** backed up as files (`config.yml` including all generated secrets).
-- The companion cache is not backed up (ephemeral).
-
-## Health Checks
-
-| Daemon | Check | Notes |
-|--------|-------|-------|
-| postgres | `pg_isready` | Internal, not user-visible |
-| companion | Port 8282 listening | Internal, not user-visible |
-| invidious | Port 3000 listening | Shown as "Web Interface"; 20s grace period; requires postgres + companion healthy first |
+Keys the package does not manage are left untouched. `check_tables` is held on so Invidious creates and repairs its own schema at startup, which is why the package does not run the upstream `init-invidious-db.sh` step.
 
 ## Dependencies
 
-None. All three containers ship inside this package.
+None. The companion and PostgreSQL both ship inside this package, so there is nothing to install first.
+
+## Network Access and Interfaces
+
+One interface is exported; the other two ports are internal to the package.
+
+| Interface | Type | Port | Protocol | Purpose |
+|-----------|------|------|----------|---------|
+| `ui` ("Web UI") | ui | 3000 | HTTP | Invidious web frontend and REST API (`/api/v1/…`) |
+
+The companion (8282) and PostgreSQL (5432) listen only inside the package; Invidious proxies companion traffic itself, so the companion is never reachable on its own. Invidious serves plain HTTP and StartOS supplies TLS and every address the interface is reached at.
+
+## Installation and First-Run Flow
+
+There is no setup wizard and no first-run task — the service is usable as soon as it starts. On first install the file model seeds `config.yml` with a random database password, a random `hmac_key`, a random `invidious_companion_key` (handed to the companion as `SERVER_SECRET_KEY`), and the companion's internal URL. Accounts are optional and registration is open by default; the Actions below lock that down. The first start also builds the database schema, so the web interface can take longer to report ready than on later starts (see Health Checks).
+
+## Actions
+
+One user-facing action; no hidden actions.
+
+### Configure Invidious (`set-config`)
+
+- **When to run it.** To change who can use the instance — typically to close open registration after you have created your own account on a publicly exposed instance.
+- **What it changes.** The `registration_enabled`, `login_enabled`, `popular_enabled`, and `statistics_enabled` keys in `config.yml` (open registration, the ability to log in, the home-page "Popular" tab, and the public `/api/v1/stats` endpoint).
+- **Cost and repeat safety.** Runs in seconds, idempotent, available at any status. Applying it restarts the service so Invidious reloads the file.
+- **Outputs.** None.
+
+## Tasks
+
+None. The service is never held on a prompt, and its ordinary controls are always available.
+
+## Health Checks
+
+Each subcontainer has a readiness check; only Invidious's is shown in the UI. Startup is ordered — Invidious is not started until PostgreSQL and the companion both report ready.
+
+| Subcontainer | Check | Failure means |
+|--------|-------|---------------|
+| `postgres` | `pg_isready` (not shown in UI) | The database is not accepting connections yet; a long first start usually means it is still initializing the data directory. |
+| `companion` | Port 8282 listening (not shown in UI) | The companion is not up; playback will fail until it is. It fetches a token from YouTube at startup, which takes a few seconds. |
+| `invidious` | Port 3000 listening, shown as "Web Interface" | The web frontend is not up. It has a 20-second grace period and waits on the other two; on the very first start it is also building the schema, so a slow first ready is normal — a persistent failure after that is a real fault. |
+
+## Backups and Restore
+
+The strategy differs by volume, and one of them is not copied at all.
+
+- **`db` is dumped, not copied.** Backup runs `pg_dump` against the database; the volume's files are never captured. Restore starts a fresh PostgreSQL and replays the dump, so the restored database is rebuilt rather than copied back.
+- **`main` is copied wholesale.** `config.yml` — including all generated secrets — is backed up and restored as files, so a restored instance keeps the same database password, `hmac_key`, and companion key.
+- **The companion cache is excluded** because it is a disposable cache that rebuilds on demand.
+
+A restored instance needs nothing re-entered: the secrets come back with `main`, and the database comes back from the dump.
 
 ## Limitations and Differences
 
-1. **No `domain` / `https_only`** — TLS and hostnames are handled by StartOS; Invidious runs plain HTTP behind the StartOS proxy. Features keyed to a single canonical domain (e.g. publishing your instance in the public instance list) are not supported.
-2. **Companion is not separately reachable** — `public_url` is unset, so all companion traffic is proxied through Invidious. There is no separate companion interface.
-3. **`config.yml` is owned by StartOS** — hand edits to options the package manages (db, keys, port, companion) will be overwritten; other keys are preserved by the file model only if added to the schema.
-4. **YouTube breakage happens upstream** — when YouTube changes break playback, the fix is a new upstream release and a package bump; there is nothing to configure locally.
-
-## What Is Unchanged from Upstream
-
-- The entire web UI and REST API (`/api/v1/…`), including RSS feeds
-- User accounts, subscriptions, playlists, watch history, import/export (including from YouTube)
-- Per-user preferences set through the web UI
-- The `check_tables` schema management behavior
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
+1. **No `domain` / `https_only`.** TLS and hostnames are StartOS's job, so Invidious runs plain HTTP behind the proxy with no single canonical domain. Features that assume one — such as listing your instance in the public instance list — do not work.
+2. **The companion is not separately reachable.** Its `public_url` is unset and all its traffic is proxied through Invidious, so there is no companion interface to expose.
+3. **`config.yml` structural fields are owned by StartOS.** Hand edits to the database connection, ports, keys, or companion URL are reverted on the next rewrite (see File Models).
+4. **Playback breakage is upstream.** When YouTube changes something and breaks playback — as it does periodically for every third-party frontend — the fix is a new upstream release and a package bump, not a local setting.
 
 ---
 
@@ -137,20 +134,34 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 ```yaml
 package_id: invidious
 architectures: [x86_64, aarch64]
+subcontainers: [invidious, companion, postgres]
+images:
+  invidious: quay.io/invidious/invidious # built via ./Dockerfile
+  companion: quay.io/invidious/invidious-companion
+  postgres: postgres
 volumes:
-  main: /data (invidious container)
-  db: /var/lib/postgresql (postgres container)
-ports:
-  ui: 3000
-internal_ports:
+  main: /data # invidious: config.yml
+  db: /var/lib/postgresql # postgres: PGDATA
+file_models:
+  - config.yml # main volume, YAML
+startos_managed_env_vars:
+  - INVIDIOUS_CONFIG_FILE # invidious
+  - SERVER_SECRET_KEY # companion
+  - POSTGRES_DB # postgres
+  - POSTGRES_USER
+  - POSTGRES_PASSWORD
+  - PGDATA
+dependencies: none
+interfaces:
+  ui: { type: ui, port: 3000 }
+internal_ports: # not exported as interfaces
   companion: 8282
   postgres: 5432
-dependencies: none
-startos_managed_env_vars:
-  - INVIDIOUS_CONFIG_FILE (invidious)
-  - SERVER_SECRET_KEY (companion)
-  - POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, PGDATA (postgres)
-config_file: config.yml (main volume, YAML file model)
 actions:
   - set-config
+tasks: none
+health_checks:
+  - postgres
+  - companion
+  - invidious
 ```

@@ -2,29 +2,30 @@
 
 ## Documentation
 
-- [Invidious documentation](https://docs.invidious.io/) — the upstream guide covering features, the API, and troubleshooting.
+- [Invidious documentation](https://docs.invidious.io/) — the upstream guide to features, the API, and troubleshooting.
 
 ## What you get on StartOS
 
-- A **Web UI** interface — your private YouTube frontend: search, watch, subscribe, and build playlists without ads or tracking.
-- The **Invidious companion** (required for video playback) and a **PostgreSQL** database run inside the package, fully configured — you don't manage either.
+Opening the **Web UI** interface gives you Invidious's full web frontend and API. The companion that resolves video playback and the PostgreSQL database that holds your accounts, subscriptions, and playlists both run inside the package and are configured for you, so there is nothing to set up behind the scenes.
 
 ## Getting set up
 
-There is nothing to set up. Install, start, and open the **Web UI** interface.
+Open the **Web UI** interface — there is nothing to configure first.
 
-Creating an account (top-right → **Log in / Register**) is optional, but needed for subscriptions, playlists, and watch history. Accounts live entirely on your server.
+An account is optional, but subscriptions, playlists, and watch history need one. Create it from **Log in / Register** at the top right; accounts and their data live entirely on your server.
+
+If you expose your instance publicly, create your own account first, then use the **Configure Invidious** action to turn off open registration.
 
 ## Using Invidious
 
-- **Import your YouTube subscriptions**: in the Invidious UI, go to **Settings (cog) → Import/export data**. Invidious can import subscriptions from a Google Takeout export, a NewPipe export, or another Invidious instance.
-- **Preferences** (theme, default quality, captions, autoplay) are set through the cog icon and stored per account (or in your browser if not logged in).
-- **RSS**: every channel and playlist page has an RSS link, handy for feed readers.
+- **Import your YouTube subscriptions** from the cog menu → **Import/export data**. Invidious accepts a Google Takeout export, a NewPipe export, or a subscriptions file from another Invidious instance.
+- **Set your preferences** (theme, default quality, captions, autoplay) from the same cog menu. They are stored per account, or in your browser when you are not logged in.
+- **Subscribe to RSS feeds** — every channel and playlist page links an RSS feed for your reader.
 
 ### Actions
 
-- **Configure Invidious** — toggle open registration, login, the "Popular" page, and the public statistics endpoint (`/api/v1/stats`). If you expose your instance publicly (e.g. via StartTunnel), consider disabling registration after creating your own account.
+- **Configure Invidious** — turn open registration, login, the home-page "Popular" tab, and the public statistics endpoint on or off.
 
 ## Troubleshooting
 
-- **Videos won't play**: YouTube frequently changes things and breaks all third-party frontends at once. Restart the service first; if it persists, check the [upstream issue tracker](https://github.com/iv-org/invidious/issues) — a package update usually follows shortly after upstream fixes it.
+**Videos won't play.** YouTube changes frequently and breaks third-party frontends all at once. Restart the service first; if playback is still broken, check the [upstream issue tracker](https://github.com/iv-org/invidious/issues) — a package update usually follows soon after upstream ships a fix.
