@@ -5,7 +5,7 @@ import { companionPort, POSTGRES_DB, POSTGRES_USER, uiPort } from '../utils'
 const randomString = (len: number) =>
   utils.getDefaultString({ charset: 'a-z,A-Z,0-9', len })
 
-const dbSchema = z.object({
+const dbSchema = z.looseObject({
   user: z.literal(POSTGRES_USER).catch(POSTGRES_USER),
   password: z.string().catch(randomString(24)),
   host: z.literal('localhost').catch('localhost'),
@@ -16,11 +16,11 @@ const dbSchema = z.object({
 // Invidious proxies all companion traffic itself when only private_url is
 // set — no public interface for the companion is needed.
 const companionUrl = `http://localhost:${companionPort}/companion` as const
-const companionSchema = z.object({
+const companionSchema = z.looseObject({
   private_url: z.literal(companionUrl).catch(companionUrl),
 })
 
-const shape = z.object({
+const shape = z.looseObject({
   db: dbSchema.catch(() => dbSchema.parse({})),
   // Creates/repairs the schema on startup — replaces the manual
   // init-invidious-db.sh step from the upstream docker-compose.

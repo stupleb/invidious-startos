@@ -57,7 +57,7 @@ The companion keeps only a disposable player cache under `/var/tmp` in its own c
 
 ## File Models
 
-The package owns one configuration file, `config.yml` on the `main` volume, written as a YAML file model. It is seeded once at install (the model's defaults generate the secrets) and rewritten only on install and whenever the Configure Invidious action runs. Invidious reads the same file directly, so what the model writes is what the service loads at its next start.
+The package owns one configuration file, `config.yml` on the `main` volume, written as a YAML file model. The model re-applies its values each time the service's container initializes — install, update, restore, and every server restart — and whenever the Configure Invidious action runs, writing the file only when something has changed; the first write, at install, generates the secrets. Invidious reads the same file directly, so what the model writes is what the service loads at its next start.
 
 Three classes of keys, which is what decides whether a hand edit sticks:
 
