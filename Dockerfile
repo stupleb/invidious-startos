@@ -7,3 +7,7 @@ FROM quay.io/invidious/invidious:2.20260804.1-arm64 AS base-arm64
 
 ARG TARGETARCH
 FROM base-${TARGETARCH}
+USER root
+RUN apk upgrade --no-cache ca-certificates-bundle \
+ && ! grep -q MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBr /etc/ssl/certs/ca-certificates.crt
+USER invidious
