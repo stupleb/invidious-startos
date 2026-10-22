@@ -37,12 +37,13 @@ Three subcontainers run as one service, each on the upstream image with its defa
 | Subcontainer | Image | Purpose |
 |-----------|-------|---------|
 | `invidious` | `quay.io/invidious/invidious`, built via the local `Dockerfile` | Web frontend and REST API |
-| `companion` | `quay.io/invidious/invidious-companion` | Resolves YouTube video streams; required for playback |
+| `companion` | `quay.io/invidious/invidious-companion`, built via `companion.Dockerfile` | Resolves YouTube video streams; required for playback |
 | `postgres` | `postgres` (Alpine) | Subscriptions, accounts, playlists, and the video-metadata cache |
 
 - **Architectures:** x86_64, aarch64.
 - Upstream publishes arch-split Invidious tags (one for amd64, an `-arm64` variant for arm64) rather than a multi-arch tag; the local `Dockerfile` selects the right one per architecture via `TARGETARCH`.
 - The companion has no release tags upstream, so it is pinned to a specific dated build in `startos/manifest/index.ts`.
+- Both upstream images still trust the compromised eMudhra root (emSign ECC Root CA - G3), so each gets a temporary layer that comes out once upstream ships fixed images. The `Dockerfile` upgrades Alpine's CA bundle. `companion.Dockerfile` copies in Debian's fixed bundle and sets `DENO_TLS_CA_STORE=system`, because the companion's Deno runtime otherwise trusts its compiled-in roots instead of the system store. Both builds fail if the bundle still contains that root. `postgres` runs unmodified.
 
 ## Volume and Data Layout
 
@@ -137,7 +138,7 @@ architectures: [x86_64, aarch64]
 subcontainers: [invidious, companion, postgres]
 images:
   invidious: quay.io/invidious/invidious # built via ./Dockerfile
-  companion: quay.io/invidious/invidious-companion
+  companion: quay.io/invidious/invidious-companion # built via ./companion.Dockerfile
   postgres: postgres
 volumes:
   main: /data # invidious: config.yml

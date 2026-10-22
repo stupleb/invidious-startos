@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '2.20260804.1:1',
+  version: '2.20260804.1:2',
   releaseNotes: {
     en_US:
-      'Video playback is more reliable, and backups of large databases complete.',
+      'Stops trusting certificates from a compromised certificate authority (eMudhra).',
     es_ES:
-      'La reproducción de vídeo es más fiable y las copias de seguridad de bases de datos grandes se completan.',
+      'Deja de confiar en los certificados de una autoridad de certificación comprometida (eMudhra).',
     de_DE:
-      'Die Videowiedergabe ist zuverlässiger, und Sicherungen großer Datenbanken werden abgeschlossen.',
+      'Vertraut Zertifikaten einer kompromittierten Zertifizierungsstelle (eMudhra) nicht mehr.',
     pl_PL:
-      'Odtwarzanie wideo jest bardziej niezawodne, a kopie zapasowe dużych baz danych kończą się powodzeniem.',
+      'Przestaje ufać certyfikatom przejętego urzędu certyfikacji (eMudhra).',
     fr_FR:
-      'La lecture vidéo est plus fiable et les sauvegardes des bases de données volumineuses aboutissent.',
+      "Ne fait plus confiance aux certificats d'une autorité de certification compromise (eMudhra).",
   },
   migrations: {
     up: async () => {},
