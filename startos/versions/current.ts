@@ -1,18 +1,13 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '2.20260804.1:2',
+  version: '2.20261022.0:0',
   releaseNotes: {
-    en_US:
-      'Stops trusting certificates from a compromised certificate authority (eMudhra).',
-    es_ES:
-      'Deja de confiar en los certificados de una autoridad de certificación comprometida (eMudhra).',
-    de_DE:
-      'Vertraut Zertifikaten einer kompromittierten Zertifizierungsstelle (eMudhra) nicht mehr.',
-    pl_PL:
-      'Przestaje ufać certyfikatom przejętego urzędu certyfikacji (eMudhra).',
-    fr_FR:
-      "Ne fait plus confiance aux certificats d'une autorité de certification compromise (eMudhra).",
+    en_US: 'Updates Invidious to 2.20261022.0.',
+    es_ES: 'Actualiza Invidious a la versión 2.20261022.0.',
+    de_DE: 'Aktualisiert Invidious auf Version 2.20261022.0.',
+    pl_PL: 'Aktualizuje Invidious do wersji 2.20261022.0.',
+    fr_FR: 'Met à jour Invidious vers la version 2.20261022.0.',
   },
   migrations: {
     up: async () => {},
