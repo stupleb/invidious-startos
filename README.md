@@ -43,7 +43,7 @@ Three subcontainers run as one service, each on the upstream image with its defa
 - **Architectures:** x86_64, aarch64.
 - Upstream publishes arch-split Invidious tags (one for amd64, an `-arm64` variant for arm64) rather than a multi-arch tag; the local `Dockerfile` selects the right one per architecture via `TARGETARCH`.
 - The companion has no release tags upstream, so it is pinned to a specific dated build in `startos/manifest/index.ts`.
-- Both upstream images still trust the compromised eMudhra root (emSign ECC Root CA - G3), so each gets a temporary layer that comes out once upstream ships fixed images. The `Dockerfile` upgrades Alpine's CA bundle. `companion.Dockerfile` copies in Debian's fixed bundle and sets `DENO_TLS_CA_STORE=system`, because the companion's Deno runtime otherwise trusts its compiled-in roots instead of the system store. Both builds fail if the bundle still contains that root. `postgres` runs unmodified.
+- The companion image still trusts the compromised eMudhra root (emSign ECC Root CA - G3), so it gets a temporary layer that comes out once upstream ships a fixed image. `companion.Dockerfile` copies in Debian's fixed bundle and sets `DENO_TLS_CA_STORE=system`, because the companion's Deno runtime otherwise trusts its compiled-in roots instead of the system store. The build fails if the bundle still contains that root. `invidious` and `postgres` run unmodified.
 
 ## Volume and Data Layout
 
