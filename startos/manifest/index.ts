@@ -26,7 +26,7 @@ export const manifest = setupManifest({
         dockerBuild: {
           dockerfile: 'companion.Dockerfile',
           buildArgs: {
-            IMAGE: 'quay.io/invidious/invidious-companion:2026.10.18-fcb0456',
+            IMAGE: 'quay.io/invidious/invidious-companion:2026.11.02-dc2fd81',
           },
         },
       },

@@ -75,7 +75,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
             'localhost',
           ])
           if (exitCode !== 0) {
-            return { result: 'loading', message: null }
+            return { result: 'starting', message: null }
           }
           return { result: 'success', message: null }
         },
