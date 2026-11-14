@@ -23,12 +23,7 @@ export const manifest = setupManifest({
     // The companion cuts no release tags; pin one of its dated build tags.
     companion: {
       source: {
-        dockerBuild: {
-          dockerfile: 'companion.Dockerfile',
-          buildArgs: {
-            IMAGE: 'quay.io/invidious/invidious-companion:2026.11.02-dc2fd81',
-          },
-        },
+        dockerTag: 'quay.io/invidious/invidious-companion:2026.11.07-07ae73c',
       },
       arch: ['x86_64', 'aarch64'],
     },
